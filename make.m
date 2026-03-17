@@ -112,6 +112,9 @@ function success = build(varargin)
   % (relative to `src/core` directory), while the others are _dependencies_
   % (relative to `src`).
 
+  system('cmake -S libzmq -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_SHARED=OFF');
+  system('cmake --build build --config Release');
+
   [make_path, lib_path, src_path, ~] = get_paths;
 
   %% ZMQ CONFIGURATION:
