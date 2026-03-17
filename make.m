@@ -148,14 +148,14 @@ function success = build(varargin)
 
   % --> '-l' option: libname normalization
   orig_zmq_lib = ZMQ_COMPILED_LIB;
-  ZMQ_COMPILED_LIB = regexprep(orig_zmq_lib, '(^lib)|(\.\w+$)', '');
+  %ZMQ_COMPILED_LIB = regexprep(orig_zmq_lib, '(^lib)|(\.\w+$)', '');
   % <--
 
   zmq_compile_flags = { ...
     ['-I' dquote(src_path)], ...
     ['-I' dquote(ZMQ_INCLUDE_PATH)], ...
     ['-L' dquote(ZMQ_LIB_PATH)], ...
-    ['-l' dquote(ZMQ_COMPILED_LIB)] ...
+    [dquote(ZMQ_COMPILED_LIB)] ...
   };
 
   if nargin > 0
@@ -213,7 +213,7 @@ function compile(flags, file, outputdir)
     % Inexplicably just using quotes (`sprintf('"%s"', outputfile)` or
     % `['"' outputfile '"']` ) does not work on Windows, even when there are not
     % whitespaces.
-    mex('-largeArrayDims', '-O', flags{:}, deps{:}, file, '-output', outputfile);
+    mex('-largeArrayDims', '-O', flags{:}, deps{:}, file, '-output', outputfile, '-lgnutls');
   end
 end
 
