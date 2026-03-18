@@ -112,8 +112,10 @@ function success = build(varargin)
   % (relative to `src/core` directory), while the others are _dependencies_
   % (relative to `src`).
 
-  system('cmake -S libzmq -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_SHARED=OFF');
-  system('cmake --build build --config Release');
+  system(['cmake -S libzmq -B build -DCMAKE_BUILD_TYPE=Release '...
+          '-DBUILD_TESTS=OFF -DBUILD_SHARED=OFF -DWITH_LIBBSD=OFF '...
+          '-DENABLE_DRAFTS=OFF']);
+  system('cmake --build build --config Release --parallel 4');
 
   [make_path, lib_path, src_path, ~] = get_paths;
 
@@ -206,14 +208,18 @@ function compile(flags, file, outputdir)
   fprintf('compile %s\n', file);
   cellfun(@(dep) fprintf('\t- %s\n', dep), deps);
 
+  % Note that this is linux-specific
   if isoctave
     mex(flags{:}, deps{:}, file, '-o', dquote(outputfile));
+    system(sprintf('strip --strip-unneeded %s.mex', outputfile));
   else
     % TODO: scape properly the `outputfile` to avoid whitespace issues.
     % Inexplicably just using quotes (`sprintf('"%s"', outputfile)` or
     % `['"' outputfile '"']` ) does not work on Windows, even when there are not
     % whitespaces.
-    mex('-largeArrayDims', '-O', flags{:}, deps{:}, file, '-output', outputfile, '-lgnutls');
+    mex('-largeArrayDims', '-O', ...
+        flags{:}, deps{:}, file, '-output', outputfile);
+    system(sprintf('strip --strip-unneeded %s.mexa64', outputfile));
   end
 end
 
