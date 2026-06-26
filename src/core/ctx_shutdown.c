@@ -14,7 +14,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     contextPtr = (void **) mxGetData(prhs[0]);
     coreAPIReturn = zmq_ctx_shutdown(*contextPtr);
     if (coreAPIReturn < 0) {
-        switch (errno) {
+        /* Windows users can have problems with errno, see http://api.zeromq.org/master:zmq-errno */
+        int err = errno;
+        if (err == 0) err = zmq_errno();
+        switch (err) {
             case EFAULT:
                 mexErrMsgIdAndTxt("zmq:core:ctx_shutdown:invalidContext",
                         "Error: Invalid ZMQ Context.");

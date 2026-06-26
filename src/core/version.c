@@ -15,7 +15,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
       mexErrMsgTxt("Too many output arguments.");
     } else {
       outputBuf = mxCalloc(bufLen, sizeof(char));
-      sprintf(outputBuf, "%d.%d.%d", major, minor, patch);
+      snprintf(outputBuf, bufLen, "%d.%d.%d", major, minor, patch);
       plhs[0] = mxCreateString(outputBuf);
     }
 }

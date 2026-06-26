@@ -98,7 +98,7 @@ void *core_socket(const mxArray *params[])
         /* Windows users can have problems with errno, see http://api.zeromq.org/4-0:zmq-errno */
         if (err == 0) err = zmq_errno();
 
-        switch (errno) {
+        switch (err) {
             case EINVAL:
                 mexErrMsgIdAndTxt("zmq:core:socket:unknownSocketTypeCore",
                         "Error: Unknown socket type (core)."

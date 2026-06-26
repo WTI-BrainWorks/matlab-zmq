@@ -44,7 +44,7 @@ char *get_option_name(const mxArray *param)
 
 void core_ctx_set(const mxArray *params[])
 {
-    int ret, optValue;
+    int ret;
     char *option = get_option_name(params[1]);
     int optVal = mxGetScalar(params[2]);
     void **contextPtr = (void **) mxGetData(params[0]);

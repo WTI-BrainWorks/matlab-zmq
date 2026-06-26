@@ -56,9 +56,9 @@ void handle_error() {
             message = "Error: Something has gone very, very wrong. Unknown error.";
 
         if (caller == NULL) {
-            sprintf(identifier, "zmq:%s", errDesc->name);
+            snprintf(identifier, sizeof(identifier), "zmq:%s", errDesc->name);
         } else {
-            sprintf(identifier, "zmq:core:%s:%s", caller, errDesc->name);
+            snprintf(identifier, sizeof(identifier), "zmq:core:%s:%s", caller, errDesc->name);
         }
 
         mexErrMsgIdAndTxt(identifier, message);

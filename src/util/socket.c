@@ -93,7 +93,7 @@ const zmq_socket_type_t* find_socket_type_by_id(int id) {
 /* Custom CONSTANT <=> STRING convertions */
 
 mxArray* socktype_to_m(void* handle) {
-    mxArray* ret;
+    mxArray* ret = NULL;
     const zmq_socket_type_t* sockType = NULL;
 
     sockType = find_socket_type_by_id(*((int*) handle));

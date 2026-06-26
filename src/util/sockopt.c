@@ -244,7 +244,7 @@ const zmq_sockopt_mechanism_t* find_sockopt_mechanism_by_name(char* name) {
 /* Custom CONSTANT <=> STRING convertions */
 
 mxArray* mechanism_to_m(void* handle) {
-    mxArray* ret;
+    mxArray* ret = NULL;
     const zmq_sockopt_mechanism_t* mechanism = NULL;
 
     mechanism = find_sockopt_mechanism_by_id(*((int*) handle));

@@ -4,6 +4,7 @@
 #include <mex.h>
 #include <zmq.h>
 #include <string.h>
+#include <errno.h>
 
 #define DEFAULT_BUFFER_LENGTH 255
 
@@ -52,8 +53,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     coreAPIReturn = zmq_recv(socket, buffer, bufLen * sizeof(uint8_t), coreAPIOptionFlag);
 
     if (coreAPIReturn < 0) {
+        /* Windows users can have problems with errno, see http://api.zeromq.org/master:zmq-errno */
+        int err = errno;
+        if (err == 0) err = zmq_errno();
         /* Check if error is due to non-blocking with no message */
-        if (errno == EAGAIN) {
+        if (err == EAGAIN) {
             /* no error, so return zmq_recv return value */
             plhs[0] = mxCreateNumericMatrix(1, 1, mxINT32_CLASS, mxREAL);
             *((int*)mxGetData(plhs[0])) = coreAPIReturn;
@@ -94,8 +98,8 @@ int configure_flag(const mxArray **params, int nParams)
 void configure_return(int nlhs, mxArray **plhs, int msgLen, size_t bufLen, void *buffer) {
     if (msgLen > bufLen) {
         mexWarnMsgIdAndTxt("zmq:core:recv:bufferTooSmall",
-            "Message is %d bytes long, but buffer is %d. Truncated.",
-            msgLen, bufLen);
+            "Message is %d bytes long, but buffer is %lu. Truncated.",
+            msgLen, (unsigned long) bufLen);
         plhs[0] = uint8_array_to_m((void*) buffer, bufLen);
     } else {
         plhs[0] = uint8_array_to_m((void*) buffer, msgLen);

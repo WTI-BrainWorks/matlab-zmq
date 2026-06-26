@@ -30,11 +30,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     coreAPIReturn = core_ctx_get(prhs);
 
-    if (sizeof(void *) == 4) {
-        plhs[0] = mxCreateNumericMatrix(1,1,mxUINT32_CLASS, mxREAL);
-    } else {
-        plhs[0] = mxCreateNumericMatrix(1,1,mxUINT64_CLASS, mxREAL);
-    }
+    /* zmq_ctx_get returns an int option value, so return it as int32. */
+    plhs[0] = mxCreateNumericMatrix(1, 1, mxINT32_CLASS, mxREAL);
     mexReturn = (int *) mxGetData(plhs[0]);
     *mexReturn = coreAPIReturn;
 }

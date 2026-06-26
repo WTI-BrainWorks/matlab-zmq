@@ -65,7 +65,7 @@ void configure_message(const mxArray *rawMessage, void **payload, size_t *payloa
     *payloadLen = mxGetN(rawMessage);
 
     *payload = uint8_array_from_m(rawMessage, *payloadLen);
-    if (payload == NULL) {
+    if (*payload == NULL) {
         mexErrMsgIdAndTxt("zmq:core:send:messageIsEmpty", "Error: You're trying to send an empty message.");
     }
 }
