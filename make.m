@@ -124,9 +124,13 @@ function success = build(varargin)
   if ispc && ~isoctave
     ipo = ' -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON';
   end
+  % -DCMAKE_POLICY_VERSION_MINIMUM=3.5: libzmq's CMakeLists declares an ancient
+  % cmake_minimum_required, and CMake >= 4.0 removed compatibility with < 3.5,
+  % so the configure step errors on newer CMake (CI runners, MSYS2). This makes
+  % it configure anyway; it is ignored by older CMake.
   system(['cmake -S libzmq -B build -DCMAKE_BUILD_TYPE=Release '...
           '-DBUILD_TESTS=OFF -DBUILD_SHARED=OFF -DWITH_LIBBSD=OFF '...
-          '-DENABLE_DRAFTS=OFF' ipo]);
+          '-DENABLE_DRAFTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5' ipo]);
   system('cmake --build build --config Release --parallel 4');
 
   [make_path, lib_path, src_path, ~] = get_paths;
