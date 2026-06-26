@@ -1,11 +1,12 @@
+#include <zmq_commands.h>
 #include <mex.h>
 #include <string.h>
 #include <zmq.h>
 
-char *get_option_name(const mxArray *);
-void core_ctx_set(const mxArray *[]);
+static char *get_option_name(const mxArray *);
+static void core_ctx_set(const mxArray *[]);
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_ctx_set(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     if (nrhs != 3) {
         mexErrMsgIdAndTxt("zmq:core:ctx_set:invalidArgs",
@@ -31,7 +32,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     core_ctx_set(prhs);
 }
 
-char *get_option_name(const mxArray *param)
+static char *get_option_name(const mxArray *param)
 {
     int optLen = mxGetM(param) * mxGetN(param) + 1;
     char *ret = (char *) mxCalloc(optLen, sizeof(char));
@@ -42,7 +43,7 @@ char *get_option_name(const mxArray *param)
     return ret;
 }
 
-void core_ctx_set(const mxArray *params[])
+static void core_ctx_set(const mxArray *params[])
 {
     int ret;
     char *option = get_option_name(params[1]);

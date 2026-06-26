@@ -1,8 +1,9 @@
+#include <zmq_commands.h>
 #include <mex.h>
 #include <zmq.h>
 #include <stdio.h>
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_version(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     int minor, major, patch, bufLen = 50;
     char *outputBuf;

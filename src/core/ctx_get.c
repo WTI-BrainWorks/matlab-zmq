@@ -3,14 +3,15 @@
  * Copyright 2014 Ashton Fagg (ashton@fagg.id.au)
  */
 
+#include <zmq_commands.h>
 #include <mex.h>
 #include <string.h>
 #include <zmq.h>
 
-char *get_option_name(const mxArray *);
-int core_ctx_get(const mxArray *[]);
+static char *get_option_name(const mxArray *);
+static int core_ctx_get(const mxArray *[]);
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_ctx_get(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     int coreAPIReturn;
     int *mexReturn;
@@ -36,7 +37,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     *mexReturn = coreAPIReturn;
 }
 
-char *get_option_name(const mxArray *param)
+static char *get_option_name(const mxArray *param)
 {
     int optLen;
     char *ret;
@@ -51,7 +52,7 @@ char *get_option_name(const mxArray *param)
     return ret;
 }
 
-int core_ctx_get(const mxArray *params[])
+static int core_ctx_get(const mxArray *params[])
 {
     int ret, optSelection;
     char *option;

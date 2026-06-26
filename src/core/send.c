@@ -1,3 +1,4 @@
+#include <zmq_commands.h>
 #include <util/socket.h>
 #include <util/conversions.h>
 #include <util/errors.h>
@@ -8,10 +9,10 @@
 
 /* TODO: Clean up, inline declarations.
  */
-void configure_message(const mxArray *, void **, size_t *);
-int configure_flag(const mxArray **, int );
+static void configure_message(const mxArray *, void **, size_t *);
+static int configure_flag(const mxArray **, int );
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_send(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     void *socket = NULL;
     void *payload = NULL;
@@ -41,7 +42,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     mxFree(payload);
 }
 
-void configure_message(const mxArray *rawMessage, void **payload, size_t *payloadLen)
+static void configure_message(const mxArray *rawMessage, void **payload, size_t *payloadLen)
 {
     /* We don't care what we're sending, just send it in a dumb way and let higher levels
      * deal with typing and reconstruction of dimensions, tensors etc (i.e. serialize with JSON)
@@ -70,7 +71,7 @@ void configure_message(const mxArray *rawMessage, void **payload, size_t *payloa
     }
 }
 
-int configure_flag(const mxArray **params, int nParams)
+static int configure_flag(const mxArray **params, int nParams)
 {
     int i, coreAPIOptionFlag = 0;
     char *flagStr = NULL;

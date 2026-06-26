@@ -25,16 +25,11 @@ function success = runner(varargin)
     if (nargin > 0)
         tests = varargin;
     else
-        try
-            if (ispc)
-                tests = cellstr(ls(fullfile(testPath, 'test*.m')));
-            else
-                tests = strsplit(ls(fullfile(testPath, 'test*.m')),'\n');
-                tests = tests(:,1:end-1);
-            end
-        catch
-            tests = {};
-        end
+        % `dir` returns a struct array with a `name` field identically on MATLAB
+        % and Octave, avoiding the platform-specific parsing of `ls` output
+        % (which discovered zero tests under Octave).
+        listing = dir(fullfile(testPath, 'test*.m'));
+        tests = {listing.name};
     end
 
     tic;

@@ -1,13 +1,21 @@
+/* Implements the zmq.core.socket command (cmd_socket).
+ *
+ * Named socket_cmd.c rather than socket.c so its object file does not collide
+ * with src/util/socket.c when everything is linked into the single zmqcore
+ * binary. The command name ("socket") is unaffected: it lives in the dispatch
+ * table (zmq_dispatch.c) and the shim (lib/+zmq/socket.m).
+ */
+#include <zmq_commands.h>
 #include <mex.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <zmq.h>
 
-char *get_socket_type(const mxArray *);
-void *core_socket(const mxArray *[]);
+static char *get_socket_type(const mxArray *);
+static void *core_socket(const mxArray *[]);
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_socket(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     void *coreAPIReturn;
     void **mexReturn;
@@ -36,7 +44,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     mexReturn[0] = coreAPIReturn;
 }
 
-char *get_socket_type(const mxArray *param)
+static char *get_socket_type(const mxArray *param)
 {
     int optLen;
     char *ret;
@@ -51,7 +59,7 @@ char *get_socket_type(const mxArray *param)
     return ret;
 }
 
-void *core_socket(const mxArray *params[])
+static void *core_socket(const mxArray *params[])
 {
     int sockTypeVal;
     char *sockType;

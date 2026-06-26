@@ -1,8 +1,9 @@
-% zmq.core.bind - Create outgoing connection from socket on a endpoint.
+function varargout = connect(varargin)
+% zmq.bind - Create outgoing connection from socket on a endpoint.
 %
-% Usage: status = zmq.core.connect(socket, endpoint)
+% Usage: status = zmq.connect(socket, endpoint)
 %
-% Input: socket   - Instantiated ZMQ socket handle (see zmq.core.socket).
+% Input: socket   - Instantiated ZMQ socket handle (see zmq.socket).
 %        endpoint - String consisting of a 'transport://' followed by an 'address'.
 %                   The 'transport' specifies the underlying protocol to use.
 %                   The address specifies the transport-specific address to connect to.
@@ -18,3 +19,6 @@
 %
 % Output: Zero if successful, otherwise -1.
 %
+
+    [varargout{1:nargout}] = zmq.zmqcore('connect', varargin{:});
+end

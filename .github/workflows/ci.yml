@@ -1,0 +1,115 @@
+name: CI
+
+# Builds and tests the single zmqcore MEX binary across {Linux, Windows} x
+# {MATLAB, Octave}, pinning older engine versions for compatibility with the
+# systems this is deployed on (Octave 7.3).
+#
+# libzmq is a git submodule (pinned), so every job checks out submodules and
+# `make` builds it from source via CMake before linking the MEX.
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # ----------------------------------------------------------------- MATLAB ---
+  # Uses MathWorks' official actions. On GitHub-hosted runners these run MATLAB
+  # under batch licensing automatically for PUBLIC repos; a private repo needs a
+  # license token wired into setup-matlab.
+  #
+  # `release` is pinned to test an older MATLAB too. R2022b is the era-match for
+  # Octave 7.3 (both late 2022); change it to whatever floor you must support.
+  # Old MATLAB + new toolchain can mismatch (MATLAB ships a supported-compiler
+  # list), so each pinned release is paired with a contemporaneous runner image.
+  matlab:
+    name: ${{ matrix.os }} · MATLAB ${{ matrix.release }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  release: latest }
+          - { os: windows-latest, release: latest }
+          - { os: ubuntu-22.04,   release: R2021a }   # older floor (see note above)
+          - { os: windows-2022,   release: R2021a }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+        with:
+          release: ${{ matrix.release }}
+
+      # CMake ships on the runners; the C compiler is the runner's gcc (Linux)
+      # or the preinstalled Visual Studio / MSVC (Windows).
+      - name: Build & test
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            ok = make;          assert(ok == 1, 'build failed');
+            ok = make('test');  assert(ok == 1, 'tests failed');
+
+  # ----------------------------------------------------- Octave (Linux) -------
+  # Pins exact Octave versions via the gnuoctave/octave images, spanning the
+  # compatibility floor (4.4, the psychtoolbox-era LCD) -> deployed (7.3) ->
+  # latest. fail-fast:false so each version reports independently and CI tells
+  # us exactly where compatibility holds.
+  #
+  # We check out on the HOST (git + submodules) and build INSIDE `docker run`,
+  # rather than using a job `container:`. That avoids needing git in old (and
+  # possibly EOL) images, and keeps libzmq + the MEX built with one consistent
+  # in-container toolchain.
+  octave-linux:
+    name: linux · Octave ${{ matrix.octave }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        octave: ['4.4.1', '7.3.0', 'latest']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build & test (Octave ${{ matrix.octave }})
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work "gnuoctave/octave:${{ matrix.octave }}" bash -s <<'EOF'
+          set -e
+          command -v cmake >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends cmake build-essential; }
+          octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
+          EOF
+
+  # ----------------------------------------------------- Octave (Windows) -----
+  # MSYS2/MinGW so Octave, gcc and CMake share ONE toolchain (an MSVC-built
+  # libzmq cannot be linked by Octave's MinGW mkoctfile). MSYS2 is rolling, so
+  # this tracks the current Octave -- a Windows portability check rather than a
+  # pinned-version test.
+  octave-windows:
+    name: windows · Octave (MSYS2)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-octave
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - name: Build & test
+        shell: msys2 {0}
+        env:
+          CMAKE_GENERATOR: Ninja   # MinGW: single-config; libzmq.a lands in build/lib
+        run: |
+          octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"

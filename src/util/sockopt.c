@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zmq.h>
+#if defined _WIN32
+/* SOCKET (used by the ZMQ_FD option below) lives in winsock2.h, which the
+   bundled zmq.h does not pull in. */
+#include <winsock2.h>
+#endif
 
 /*
   Lookupt table with metadata used to interpret socket options.

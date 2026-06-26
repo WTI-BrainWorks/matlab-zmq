@@ -1,12 +1,13 @@
-% zmq.core.recv - Receive a message part from a socket.
+function varargout = recv(varargin)
+% zmq.recv - Receive a message part from a socket.
 %
-% Usage: message = zmq.core.recv(socket)
-%        message = zmq.core.recv(socket, bufferLength)
-%        message = zmq.core.recv(socket, option1, option2, ...)
-%        message = zmq.core.recv(socket, bufferLength, option1, option2, ...)
-%        [msg, len] = zmq.core.recv(socket)
+% Usage: message = zmq.recv(socket)
+%        message = zmq.recv(socket, bufferLength)
+%        message = zmq.recv(socket, option1, option2, ...)
+%        message = zmq.recv(socket, bufferLength, option1, option2, ...)
+%        [msg, len] = zmq.recv(socket)
 %
-% Input: socket - Instantiated ZMQ socket handle (see zmq.core.socket).
+% Input: socket - Instantiated ZMQ socket handle (see zmq.socket).
 %        bufferLength - Size in bytes of buffer pre-allocated to receive message.
 %                       This parameter is optional with default value of 255.
 %        options - List of strings containing the options' names for reception.
@@ -15,7 +16,7 @@
 %         the length of the message will be provided.
 %
 % An application that processes multi-part messages must check the 'ZMQ_RCVMORE'
-% option with `zmq.core.getsockopt` after calling `zmq.core.recv` to determine if there
+% option with `zmq.getsockopt` after calling `zmq.recv` to determine if there
 % are further parts to receive.
 %
 % The following options are considered valid:
@@ -23,7 +24,7 @@
 % * ZMQ_DONTWAIT
 %       Specifies that the operation should be performed in non-blocking mode.
 %       If there are no messages available on the specified socket, the
-%       zmq.core.recv() function shall fail with zmq:core:recv:EAGAIN error code.
+%       zmq.recv() function shall fail with zmq:core:recv:EAGAIN error code.
 %
 %
 % NOTICE
@@ -39,10 +40,10 @@
 % EXAMPLE
 %     feature('DefaultCharacterSet', 'UTF-8');
 %     try
-%       message1 = zmq.core.recv(socket, 100, 'ZMQ_DONTWAIT');
+%       message1 = zmq.recv(socket, 100, 'ZMQ_DONTWAIT');
 %       % maximum size of message1: 100 bytes
 %       fprintf('Received message1: %s\n', char(message1));
-%       message2 = zmq.core.recv(socket, 'ZMQ_DONTWAIT');
+%       message2 = zmq.recv(socket, 'ZMQ_DONTWAIT');
 %       % maximum size of message2: 255 bytes
 %       fprintf('Received message2: %s\n', char(message2));
 %     catch e
@@ -52,9 +53,12 @@
 %         rethrow(e);
 %       end
 %     end
-%     message3 = zmq.core.recv(socket); % this will block MATLAB until receive a message
+%     message3 = zmq.recv(socket); % this will block MATLAB until receive a message
 %     % maximum size of message3: 255 bytes
 %     fprintf('Received message3: %s\n', char(message3));
 %
 % Please refer to http://api.zeromq.org/4-0:zmq-recv for further information.
 %
+
+    [varargout{1:nargout}] = zmq.zmqcore('recv', varargin{:});
+end

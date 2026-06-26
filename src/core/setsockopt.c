@@ -1,3 +1,4 @@
+#include <zmq_commands.h>
 #include <util/socket.h>
 #include <util/sockopt.h>
 #include <util/conversions.h>
@@ -6,7 +7,7 @@
 #include <zmq.h>
 #include <string.h>
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_setsockopt(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     void* socket = NULL;
     char* option = NULL;

@@ -1,3 +1,4 @@
+#include <zmq_commands.h>
 #include <util/socket.h>
 #include <util/conversions.h>
 #include <util/errors.h>
@@ -8,11 +9,11 @@
 
 #define DEFAULT_BUFFER_LENGTH 255
 
-int configure_flag(const mxArray **, int);
-void configure_return(int, mxArray **, int, size_t, void *);
-size_t configure_buffer_length(const mxArray **, int *);
+static int configure_flag(const mxArray **, int);
+static void configure_return(int, mxArray **, int, size_t, void *);
+static size_t configure_buffer_length(const mxArray **, int *);
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_recv(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     void *socket = NULL;
     void *buffer = NULL;
@@ -74,7 +75,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 /* Discover which options are passed by the user, and calculate the
  * corresponding flag */
-int configure_flag(const mxArray **params, int nParams)
+static int configure_flag(const mxArray **params, int nParams)
 {
     int i, coreAPIOptionFlag = 0;
     char *flagStr = NULL;
@@ -95,7 +96,7 @@ int configure_flag(const mxArray **params, int nParams)
 
 /* Check if the message was truncated, advising user and avoiding memory waste
  * while prepare it to return to MATLAB. Also handle the second optional return */
-void configure_return(int nlhs, mxArray **plhs, int msgLen, size_t bufLen, void *buffer) {
+static void configure_return(int nlhs, mxArray **plhs, int msgLen, size_t bufLen, void *buffer) {
     if (msgLen > bufLen) {
         mexWarnMsgIdAndTxt("zmq:core:recv:bufferTooSmall",
             "Message is %d bytes long, but buffer is %lu. Truncated.",
@@ -112,7 +113,7 @@ void configure_return(int nlhs, mxArray **plhs, int msgLen, size_t bufLen, void 
 
 /* Check if the param in the index is an number
  * if so, convert it from MATLAB and increments the index */
-size_t configure_buffer_length(const mxArray **param, int *paramIndex)
+static size_t configure_buffer_length(const mxArray **param, int *paramIndex)
 {
     size_t length = DEFAULT_BUFFER_LENGTH;
     size_t *input;

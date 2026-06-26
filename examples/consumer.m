@@ -9,21 +9,21 @@ function consumer
     id = randi([1, 10005], 1, 1);
     fprintf('I am consumer #%d', id);
 
-    context = zmq.core.ctx_new();
+    context = zmq.ctx_new();
     % recieve work
-    rx  = zmq.core.socket(context, 'ZMQ_PULL');
+    rx  = zmq.socket(context, 'ZMQ_PULL');
     producerAddress = 'tcp://127.0.0.1:5557';
-    zmq.core.connect(rx, producerAddress);
+    zmq.connect(rx, producerAddress);
     % send results
-    tx = zmq.core.socket(context, 'ZMQ_PUSH');
+    tx = zmq.socket(context, 'ZMQ_PUSH');
     collectorAddress = 'tcp://127.0.0.1:5558';
-    zmq.core.connect(tx, collectorAddress);
+    zmq.connect(tx, collectorAddress);
 
     while (1)
-        data = str2double(char(zmq.core.recv(rx)));
+        data = str2double(char(zmq.recv(rx)));
         if (mod(data, 2) == 0)
             result = sprintf('%d %d', id, data);
-            zmq.core.send(tx, uint8(result));
+            zmq.send(tx, uint8(result));
         end
     end
 end

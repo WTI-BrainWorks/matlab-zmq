@@ -1,8 +1,9 @@
+#include <zmq_commands.h>
 #include <mex.h>
 #include <errno.h>
 #include <zmq.h>
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_ctx_term(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     void **contextPtr;
     int coreAPIReturn;

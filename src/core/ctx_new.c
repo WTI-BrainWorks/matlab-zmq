@@ -1,7 +1,8 @@
+#include <zmq_commands.h>
 #include <mex.h>
 #include <zmq.h>
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_ctx_new(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     void *context;
     void **mexReturn;

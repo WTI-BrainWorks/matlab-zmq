@@ -1,9 +1,10 @@
-% zmq.core.bind - Binds the socket to a local endpoint and then accepts incoming
+function varargout = bind(varargin)
+% zmq.bind - Binds the socket to a local endpoint and then accepts incoming
 %            connections on that endpoint.
 %
-% Usage: status = zmq.core.bind(socket, endpoint)
+% Usage: status = zmq.bind(socket, endpoint)
 %
-% Input: socket   - Instantiated ZMQ socket handle (see zmq.core.socket).
+% Input: socket   - Instantiated ZMQ socket handle (see zmq.socket).
 %        endpoint - String consisting of a 'transport://' followed by an 'address'.
 %                   The transport specifies the underlying protocol to use.
 %                   The address specifies the transport-specific address to bind to.
@@ -19,3 +20,6 @@
 %
 % Output: Zero if successful, otherwise -1.
 %
+
+    [varargout{1:nargout}] = zmq.zmqcore('bind', varargin{:});
+end

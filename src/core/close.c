@@ -1,3 +1,4 @@
+#include <zmq_commands.h>
 #include <util/socket.h>
 #include <util/conversions.h>
 #include <util/errors.h>
@@ -5,7 +6,7 @@
 #include <stdlib.h>
 #include <zmq.h>
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void cmd_close(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     void* socket = NULL;
     int rc;

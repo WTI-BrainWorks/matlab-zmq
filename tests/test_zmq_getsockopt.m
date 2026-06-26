@@ -12,7 +12,7 @@ function test_zmq_getsockopt
     ... %  {'ZMQ_IDENTITY'            , ''        } , ... % issues on octave
         {'ZMQ_RATE'                , 100       } , ...
         {'ZMQ_RECOVERY_IVL'        , 10000     } , ...
-        {'ZMQ_RCVBUF'              , 0         } , ...
+        {'ZMQ_RCVBUF'              , -1        } , ... % default is -1 (OS default) since libzmq 4.2
         {'ZMQ_LINGER'              , -1        } , ...
         {'ZMQ_RECONNECT_IVL'       , 100       } , ...
         {'ZMQ_RECONNECT_IVL_MAX'   , 0         } , ...
@@ -42,7 +42,7 @@ function test_zmq_getsockopt
         option = defaultOptions{n}{1};
         value = defaultOptions{n}{2};
 
-        response = assert_does_not_throw(@zmq.core.getsockopt, socket, option);
+        response = assert_does_not_throw(@zmq.getsockopt, socket, option);
 
         if ~ischar(value)
             condition = response == value;
@@ -62,13 +62,13 @@ end
 
 function [ctx, socket] = setup
     % let's just create and destroy a dummy socket
-    ctx = zmq.core.ctx_new();
-    socket = zmq.core.socket(ctx, 'ZMQ_REP');
+    ctx = zmq.ctx_new();
+    socket = zmq.socket(ctx, 'ZMQ_REP');
 end
 
 function teardown(ctx, socket)
     % close session
-    zmq.core.close(socket);
-    zmq.core.ctx_shutdown(ctx);
-    zmq.core.ctx_term(ctx);
+    zmq.close(socket);
+    zmq.ctx_shutdown(ctx);
+    zmq.ctx_term(ctx);
 end
