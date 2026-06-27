@@ -32,8 +32,8 @@ jobs:
         include:
           - { os: ubuntu-latest,  release: latest }
           - { os: windows-latest, release: latest }
-          - { os: ubuntu-22.04,   release: R2021a }   # older floor (see note above)
-          - { os: windows-2022,   release: R2021a }
+          - { os: ubuntu-22.04,   release: R2021a }   # older floor on Linux
+          - { os: windows-2022,   release: R2022b }   # first MATLAB supporting VS2022 on hosted runners
     steps:
       - uses: actions/checkout@v4
         with:
