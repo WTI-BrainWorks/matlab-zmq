@@ -124,13 +124,21 @@ function success = build(varargin)
   if ispc && ~isoctave
     ipo = ' -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON';
   end
+  % libzmq 4.3.5 guards the Windows ipc:// headers on _MSC_VER, so under MinGW
+  % (Octave on Windows) it wrongly takes the POSIX path and fails on
+  % <sys/socket.h>. CMake still enables IPC because MinGW ships afunix.h, so
+  % force it off for that toolchain; tcp:// and inproc:// are unaffected.
+  mingw = '';
+  if ispc && isoctave
+    mingw = ' -DZMQ_HAVE_IPC=0';
+  end
   % -DCMAKE_POLICY_VERSION_MINIMUM=3.5: libzmq's CMakeLists declares an ancient
   % cmake_minimum_required, and CMake >= 4.0 removed compatibility with < 3.5,
   % so the configure step errors on newer CMake (CI runners, MSYS2). This makes
   % it configure anyway; it is ignored by older CMake.
   system(['cmake -S libzmq -B build -DCMAKE_BUILD_TYPE=Release '...
           '-DBUILD_TESTS=OFF -DBUILD_SHARED=OFF -DWITH_LIBBSD=OFF '...
-          '-DENABLE_DRAFTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5' ipo]);
+          '-DENABLE_DRAFTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5' ipo mingw]);
   system('cmake --build build --config Release --parallel 4');
 
   [make_path, lib_path, src_path, ~] = get_paths;

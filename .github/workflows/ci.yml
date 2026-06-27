@@ -112,10 +112,11 @@ jobs:
   octave-windows:
     name: windows · Octave (MSYS2)
     runs-on: windows-latest
-    # Non-blocking: libzmq 4.3.5 does not compile on MSYS2's rolling MinGW
-    # (currently gcc 16 -- its Windows detection fails and it pulls in POSIX
-    # sys/socket.h). This needs a libzmq submodule bump, not a flag tweak, so the
-    # cell stays informational rather than blocking the matrix.
+    # libzmq 4.3.5 guards its Windows ipc:// headers on _MSC_VER, so MinGW
+    # mis-compiles them (POSIX sys/socket.h). make.m works around this by
+    # disabling IPC for the MinGW build. Kept non-blocking until a green run
+    # confirms the workaround holds on MSYS2's rolling toolchain; then
+    # continue-on-error can be removed.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
