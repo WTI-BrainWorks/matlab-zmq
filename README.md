@@ -11,11 +11,38 @@ this library can be used in any number of contexts across any number of machines
 
 Getting Started
 ---------------
-+ Make sure you have ZMQ 4.0.x installed. Change settings in `config.m` to point to your installation.
-+ Ensure you have mex configured [[1]](http://www.mathworks.com/help/matlab/matlab_external/what-you-need-to-build-mex-files.html) [[2]](http://www.mathworks.com/support/compilers/R2014b/index.html)
-+ Run `make.m`
-+ Make sure that the `lib` directory is on your MATLAB path.
-+ Start hacking.
+
+libzmq is bundled as a git submodule and built from source, so you do **not**
+need a separate ZMQ install. You do need:
+
++ CMake and a C/C++ compiler on your `PATH` (used to build the bundled libzmq).
++ A configured `mex` in MATLAB ([what you need](http://www.mathworks.com/help/matlab/matlab_external/what-you-need-to-build-mex-files.html)),
+  or Octave with `mkoctfile` (the `liboctave-dev` package on Debian/Ubuntu).
+
+Then:
+
+1. Clone with submodules (libzmq won't be there otherwise):
+   ```sh
+   git clone --recursive <repo-url>
+   # or, in an existing clone:
+   git submodule update --init
+   ```
+2. From MATLAB or Octave, in the repo root, run `make`. This builds the
+   bundled libzmq via CMake and compiles a single MEX binary
+   (`lib/+zmq/zmqcore.<mexext>`) that statically links it.
+3. Put the `lib` directory on your path: `addpath('lib')`.
+4. Try it out. The API lives under the `zmq` package:
+   ```matlab
+   ctx  = zmq.ctx_new();
+   sock = zmq.socket(ctx, 'ZMQ_REQ');
+   zmq.connect(sock, 'tcp://127.0.0.1:5555');
+   zmq.send(sock, uint8('hello'));
+   reply = zmq.recv(sock, 100);
+   ```
+5. Run the test suite with `make test`.
+
+(`config.m` / `config_win.m` / `config_unix.m` are only a fallback for pointing
+at a pre-existing ZMQ install when the bundled build can't be used.)
 
 Stuff Doesn't Work
 ------------------

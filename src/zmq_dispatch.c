@@ -1,4 +1,4 @@
-/* zmq_dispatch.c - Single MEX entry point for the whole zmq.core API.
+/* zmq_dispatch.c - Single MEX entry point for the whole zmq.* API.
  *
  * Every command that used to be its own MEX file (send, recv, bind, ...) is now
  * a `cmd_*` handler compiled into this one binary, which statically links libzmq

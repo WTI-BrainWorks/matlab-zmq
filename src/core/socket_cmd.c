@@ -1,4 +1,4 @@
-/* Implements the zmq.core.socket command (cmd_socket).
+/* Implements the zmq.socket command (cmd_socket).
  *
  * Named socket_cmd.c rather than socket.c so its object file does not collide
  * with src/util/socket.c when everything is linked into the single zmqcore

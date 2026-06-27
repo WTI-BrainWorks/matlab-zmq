@@ -17,15 +17,13 @@ function success = make(varargin)
   %
   % ## NOTICE:
   %
-  % Before runnig this, make sure to install ZMQ and edit 'config.m' file.
+  % libzmq is bundled as a git submodule and built from source by CMake, so no
+  % separate ZMQ install is needed -- just CMake and a C/C++ compiler on PATH,
+  % plus a configured `mex` (MATLAB) or `mkoctfile` (Octave). Make sure the
+  % submodule is checked out (`git submodule update --init`) before building.
   %
-  % Instructions for installing ZMQ: http://zeromq.org/intro:get-the-software.
-  %
-  % The files `config_win.m` and `config_unix.m` are examples of how to edit
-  % `config.m` for different operating systems.
-  %
-  % The file `config.m` itself shows how to build `matlab-zmq` using a Homebrew
-  % instalation of ZMQ 4.0.4 for OS-X.
+  % `config.m` (and `config_win.m` / `config_unix.m`) are only a fallback for
+  % pointing at a pre-existing ZMQ install if the bundled build is unavailable.
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   %% Rules
@@ -54,7 +52,7 @@ function success = clean(varargin)
   %  - [...]: Variable list of paths to be deleted, relative to this file.
   %           No recursive glob patterns can be used.
   %
-  % If no argument is provided, all '+zmq/+core/*.mex*', '*.o', '*.asv', '*.m~' files
+  % If no argument is provided, all 'lib/+zmq/*.mex*', '*.o', '*.asv', '*.m~' files
   % will be remvoed.
   %
   % NOTICE: Without arguments, it will purge the created bindings.
@@ -193,10 +191,11 @@ function success = build(varargin)
   ZMQ_LIB_PATH = reducepath(ZMQ_LIB_PATH);
   % <--
 
-  % --> '-l' option: libname normalization
+  % --> Windows whitespace normalization for the lib path too: it is passed to
+  % mex unquoted, so 8.3-shorten it (no-op off Windows) to survive spaces in the
+  % repo path. <--
   orig_zmq_lib = ZMQ_COMPILED_LIB;
-  %ZMQ_COMPILED_LIB = regexprep(orig_zmq_lib, '(^lib)|(\.\w+$)', '');
-  % <--
+  ZMQ_COMPILED_LIB = reducepath(ZMQ_COMPILED_LIB);
 
   % NOTE: do NOT wrap these paths in quotes. Modern mex (e.g. R2023a) already
   % quotes include/library paths when it assembles the compiler command line;
