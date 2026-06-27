@@ -92,7 +92,7 @@ jobs:
 
       - name: Build & test (Octave ${{ matrix.octave }})
         run: |
-          docker run --rm -v "$PWD:/work" -w /work "gnuoctave/octave:${{ matrix.octave }}" bash -s <<'EOF'
+          docker run --rm -i -v "$PWD:/work" -w /work "gnuoctave/octave:${{ matrix.octave }}" bash -s <<'EOF'
           command -v cmake >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends cmake build-essential; }
           octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
           status=$?
