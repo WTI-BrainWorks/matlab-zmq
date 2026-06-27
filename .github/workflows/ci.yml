@@ -93,9 +93,14 @@ jobs:
       - name: Build & test (Octave ${{ matrix.octave }})
         run: |
           docker run --rm -v "$PWD:/work" -w /work "gnuoctave/octave:${{ matrix.octave }}" bash -s <<'EOF'
-          set -e
           command -v cmake >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends cmake build-essential; }
           octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
+          status=$?
+          # the container runs as root, so the built MEX is root-owned. Make lib
+          # world-readable so the later upload-artifact step (which runs as the
+          # unprivileged runner user) can include the .mex, not just the .m shims.
+          chmod -R a+rX /work/lib || true
+          exit $status
           EOF
 
       - name: Upload zmq package
