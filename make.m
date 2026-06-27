@@ -112,6 +112,8 @@ function success = build(varargin)
   %
   % If no argument is provided, the list is loaded from `compile_list.m`.
 
+  [make_path, lib_path, src_path, ~] = get_paths;
+
   % On Windows/MSVC, interprocedural optimization (/GL + /LTCG) shrinks the
   % final binary by ~8% and links cleanly (the mex link auto-enables LTCG for
   % the /GL static lib). Restrict it to MSVC: on Linux/Octave it is a no-op
@@ -134,12 +136,23 @@ function success = build(varargin)
   % cmake_minimum_required, and CMake >= 4.0 removed compatibility with < 3.5,
   % so the configure step errors on newer CMake (CI runners, MSYS2). This makes
   % it configure anyway; it is ignored by older CMake.
-  system(['cmake -S libzmq -B build -DCMAKE_BUILD_TYPE=Release '...
-          '-DBUILD_TESTS=OFF -DBUILD_SHARED=OFF -DWITH_LIBBSD=OFF '...
-          '-DENABLE_DRAFTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5' ipo mingw]);
-  system('cmake --build build --config Release --parallel 4');
-
-  [make_path, lib_path, src_path, ~] = get_paths;
+  % Configure + build the vendored libzmq. Use the classic out-of-source form
+  % (source dir as a positional arg, via `cmake -E chdir`) and the
+  % CMAKE_BUILD_PARALLEL_LEVEL env var rather than the `-S`/`-B` and `--parallel`
+  % flags, so this also works with the older CMake bundled in some Octave docker
+  % images (`-S`/`-B` need CMake >= 3.13, `--parallel` >= 3.12). The parallel env
+  % var is simply ignored by older CMake (serial build), and
+  % -DCMAKE_POLICY_VERSION_MINIMUM=3.5 is an unknown/ignored cache var on old
+  % CMake while letting CMake >= 4.0 accept libzmq's ancient cmake_minimum.
+  build_dir  = fullfile(make_path, 'build');
+  libzmq_src = fullfile(make_path, 'libzmq');
+  cmflags = ['-DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_SHARED=OFF ' ...
+             '-DWITH_LIBBSD=OFF -DENABLE_DRAFTS=OFF ' ...
+             '-DCMAKE_POLICY_VERSION_MINIMUM=3.5' ipo mingw];
+  system(['cmake -E make_directory "' build_dir '"']);
+  system(['cmake -E chdir "' build_dir '" cmake ' cmflags ' "' libzmq_src '"']);
+  setenv('CMAKE_BUILD_PARALLEL_LEVEL', '4');
+  system(['cmake --build "' build_dir '" --config Release']);
 
   %% ZMQ CONFIGURATION
   % Prefer the static libzmq just built above. Auto-detecting it (instead of
