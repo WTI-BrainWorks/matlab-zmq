@@ -62,7 +62,7 @@ function test_zmq_setsockopt
         option = common_options{n}{1};
         value = common_options{n}{2};
 
-        response = assert_does_not_throw(@zmq.setsockopt, socket, option, value);
+        response = assert_does_not_throw(@() zmq.setsockopt(socket, option, value));
         assert(response == 0, 'status code should be 0, %d given.', response);
 
         response = zmq.getsockopt(socket, option);

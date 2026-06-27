@@ -100,15 +100,8 @@ jobs:
           # world-readable so the later upload-artifact step (which runs as the
           # unprivileged runner user) can include the .mex, not just the .m shims.
           chmod -R a+rX /work/lib || true
-          echo "[container] lib/+zmq:"; ls -la /work/lib/+zmq || true
           exit $status
           EOF
-
-      - name: Debug - list package on host
-        if: always()
-        run: |
-          echo "[host] lib/+zmq:"; ls -la lib/+zmq || true
-          echo "[host] any zmqcore* files:"; find . -path ./build -prune -o -name 'zmqcore*' -printf '%M %u:%g %s %p\n' -print 2>/dev/null || find . -name 'zmqcore*'
 
       - name: Upload zmq package
         if: always()

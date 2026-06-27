@@ -6,7 +6,7 @@ function test_zmq_req_rep_multipart
     msgSent = uint8('request');
     msgSentSz = length(msgSent);
     zmq.send(client, msgSent, 'ZMQ_SNDMORE');
-    assert_does_not_throw(@zmq.send, client, msgSent);
+    assert_does_not_throw(@() zmq.send(client, msgSent));
 
     %% server test - request receive
     msg1 = zmq.recv(server);

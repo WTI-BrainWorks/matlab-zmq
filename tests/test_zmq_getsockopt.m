@@ -42,7 +42,7 @@ function test_zmq_getsockopt
         option = defaultOptions{n}{1};
         value = defaultOptions{n}{2};
 
-        response = assert_does_not_throw(@zmq.getsockopt, socket, option);
+        response = assert_does_not_throw(@() zmq.getsockopt(socket, option));
 
         if ~ischar(value)
             condition = response == value;
