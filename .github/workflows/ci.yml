@@ -58,12 +58,14 @@ jobs:
             ok = make;          assert(ok == 1, 'build failed');
             ok = make('test');  assert(ok == 1, 'tests failed');
 
-      - name: Upload zmqcore binary
+      - name: Upload zmq package
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: zmqcore-${{ matrix.os }}-matlab-${{ matrix.release }}
-          path: lib/+zmq/zmqcore.mex*
+          name: zmq-${{ matrix.os }}-matlab-${{ matrix.release }}
+          # Upload `lib` so the artifact keeps the +zmq package folder (the .m
+          # shims + the built MEX): add it to the MATLAB path and call zmq.*.
+          path: lib
           if-no-files-found: warn
 
   # ----------------------------------------------------- Octave (Linux) -------
@@ -96,12 +98,12 @@ jobs:
           octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
           EOF
 
-      - name: Upload zmqcore binary
+      - name: Upload zmq package
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: zmqcore-octave-${{ matrix.octave }}-linux
-          path: lib/+zmq/zmqcore.mex*
+          name: zmq-octave-${{ matrix.octave }}-linux
+          path: lib   # whole +zmq package (.m shims + built .mex)
           if-no-files-found: warn
 
   # ----------------------------------------------------- Octave (Windows) -----
@@ -141,10 +143,10 @@ jobs:
         run: |
           octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
 
-      - name: Upload zmqcore binary
+      - name: Upload zmq package
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: zmqcore-octave-windows
-          path: lib/+zmq/zmqcore.mex*
+          name: zmq-octave-windows
+          path: lib   # whole +zmq package (.m shims + built .mex)
           if-no-files-found: warn
