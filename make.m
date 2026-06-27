@@ -124,21 +124,13 @@ function success = build(varargin)
   if ispc && ~isoctave
     ipo = ' -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON';
   end
-  % libzmq decides ZMQ_HAVE_WINDOWS via check_include_files(windows.h), which can
-  % fail on MSYS2's MinGW with a bleeding-edge gcc; its IPC code then falls back
-  % to POSIX <sys/socket.h> and won't compile. Force it on for MinGW (Octave on
-  % Windows) so libzmq uses the Windows IPC path (afunix.h).
-  mingw = '';
-  if ispc && isoctave
-    mingw = ' -DZMQ_HAVE_WINDOWS=ON';
-  end
   % -DCMAKE_POLICY_VERSION_MINIMUM=3.5: libzmq's CMakeLists declares an ancient
   % cmake_minimum_required, and CMake >= 4.0 removed compatibility with < 3.5,
   % so the configure step errors on newer CMake (CI runners, MSYS2). This makes
   % it configure anyway; it is ignored by older CMake.
   system(['cmake -S libzmq -B build -DCMAKE_BUILD_TYPE=Release '...
           '-DBUILD_TESTS=OFF -DBUILD_SHARED=OFF -DWITH_LIBBSD=OFF '...
-          '-DENABLE_DRAFTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5' ipo mingw]);
+          '-DENABLE_DRAFTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5' ipo]);
   system('cmake --build build --config Release --parallel 4');
 
   [make_path, lib_path, src_path, ~] = get_paths;
@@ -227,14 +219,14 @@ function success = build(varargin)
       zmq_compile_flags = [zmq_compile_flags, {'ws2_32.lib', 'rpcrt4.lib', 'iphlpapi.lib'}];
     end
   elseif ~isoctave
-    % MATLAB on Linux/macOS links a C MEX via gcc against the static C++ libzmq.
-    % Link libstdc++/libgcc statically so the MEX carries its own C++ runtime and
-    % does not depend on MATLAB's bundled (often older) libstdc++ at load time --
-    % otherwise newer GLIBCXX symbols baked in at build time are "not found" when
-    % MATLAB loads its own libstdc++ (e.g. GLIBCXX_3.4.29 on R2021a). Octave is
-    % unaffected (it links via g++ against the system libstdc++).
-    zmq_compile_flags = [zmq_compile_flags, ...
-      {'-static-libgcc', '-Wl,-Bstatic', '-lstdc++', '-Wl,-Bdynamic', '-lpthread'}];
+    % MATLAB on Linux/macOS links a C MEX via gcc against the static C++ libzmq,
+    % so name the C++ runtime and pthreads explicitly. (Octave links via g++,
+    % which pulls these in automatically.)
+    % NOTE: the MEX then needs libstdc++ at run time. Very old MATLAB releases
+    % bundle an older libstdc++ and can report a missing GLIBCXX_* version; the
+    % practical Linux MATLAB floor is a release whose bundled libstdc++ is new
+    % enough for the runner's gcc.
+    zmq_compile_flags = [zmq_compile_flags, {'-lstdc++', '-lpthread'}];
   end
 
   % All sources are compiled together into a single MEX binary. A custom source
