@@ -1,133 +1,148 @@
 name: CI
 
-# Builds and tests the single zmqcore MEX binary across {Linux, Windows} x
-# {MATLAB, Octave}, pinning older engine versions for compatibility with the
-# systems this is deployed on (Octave 7.3).
+# Strategy: BUILD on the oldest supported version, then TEST that exact binary on
+# newer versions (forward-compatibility), and RELEASE only the floor-built
+# binaries. Rationale:
+#   * MATLAB mex is forward-compatible (built on an older release runs on newer),
+#     so one floor build per OS covers all newer MATLAB.
+#   * Octave gives no cross-major-version mex ABI guarantee, so the forward-test
+#     jobs will reveal empirically whether the 4.4 binary loads on 7.3 / latest
+#     or whether per-version Octave builds are actually required.
 #
-# libzmq is a git submodule (pinned), so every job checks out submodules and
-# `make` builds it from source via CMake before linking the MEX.
+# libzmq is a git submodule (pinned); BUILD jobs check it out + compile it via
+# CMake, TEST jobs don't need it (the MEX statically links it, no rebuild).
 
 on:
   push:
     branches: [ master ]
+    tags: ['v*']          # pushing a v* tag also publishes a GitHub Release
   pull_request:
   workflow_dispatch:
 
 jobs:
-  # ----------------------------------------------------------------- MATLAB ---
-  # Uses MathWorks' official actions. On GitHub-hosted runners these run MATLAB
-  # under batch licensing automatically for PUBLIC repos; a private repo needs a
-  # license token wired into setup-matlab.
-  #
-  # `release` is pinned to test an older MATLAB too. R2022b is the era-match for
-  # Octave 7.3 (both late 2022); change it to whatever floor you must support.
-  # Old MATLAB + new toolchain can mismatch (MATLAB ships a supported-compiler
-  # list), so each pinned release is paired with a contemporaneous runner image.
-  matlab:
-    name: ${{ matrix.os }} · MATLAB ${{ matrix.release }}
+  # =============================================================== MATLAB =====
+  # Build on the floor release per OS (oldest that builds on hosted runners:
+  # R2021a needs a libstdc++ preload on Linux; R2022b is the first to support
+  # VS2022 on Windows), then forward-test that binary on the latest MATLAB.
+  matlab-build:
+    name: build · ${{ matrix.os }} · MATLAB ${{ matrix.release }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest,  release: latest }
-          - { os: windows-latest, release: latest }
-          - { os: ubuntu-22.04,   release: R2021a, ldpreload: /usr/lib/x86_64-linux-gnu/libstdc++.so.6 }  # older Linux floor
-          - { os: windows-2022,   release: R2022b }   # first MATLAB supporting VS2022 on hosted runners
+          - { os: ubuntu-22.04, release: R2021a, asset: zmq-matlab-linux,
+              ldpreload: /usr/lib/x86_64-linux-gnu/libstdc++.so.6 }
+          - { os: windows-2022, release: R2022b, asset: zmq-matlab-windows }
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-
-      - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@v3
+      - uses: matlab-actions/setup-matlab@v3
         with:
           release: ${{ matrix.release }}
-
-      # CMake ships on the runners; the C compiler is the runner's gcc (Linux)
-      # or the preinstalled Visual Studio / MSVC (Windows).
       - name: Build & test
-        # LD_PRELOAD is set only for the older Linux MATLAB cell (empty/no-op
-        # elsewhere): it makes MATLAB load the system libstdc++ instead of its
-        # bundled, older one, so the mex's newer GLIBCXX_* requirement resolves.
         env:
+          # set only for the older Linux cell (empty/no-op elsewhere): makes
+          # MATLAB load the system libstdc++ so the gcc-built MEX's GLIBCXX_*
+          # requirement resolves on the older bundled libstdc++.
           LD_PRELOAD: ${{ matrix.ldpreload }}
         uses: matlab-actions/run-command@v3
         with:
           command: |
             ok = make;          assert(ok == 1, 'build failed');
             ok = make('test');  assert(ok == 1, 'tests failed');
-
-      - name: Upload zmq package
-        if: always()
+      - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: zmq-${{ matrix.os }}-matlab-${{ matrix.release }}
-          # Upload `lib` so the artifact keeps the +zmq package folder (the .m
-          # shims + the built MEX): add it to the MATLAB path and call zmq.*.
-          path: lib
-          if-no-files-found: warn
+          name: ${{ matrix.asset }}
+          path: lib                # whole +zmq package (.m shims + built MEX)
+          if-no-files-found: error
 
-  # ----------------------------------------------------- Octave (Linux) -------
-  # Pins exact Octave versions via the gnuoctave/octave images, spanning the
-  # compatibility floor (4.4, the psychtoolbox-era LCD) -> deployed (7.3) ->
-  # latest. fail-fast:false so each version reports independently and CI tells
-  # us exactly where compatibility holds.
-  #
-  # We check out on the HOST (git + submodules) and build INSIDE `docker run`,
-  # rather than using a job `container:`. That avoids needing git in old (and
-  # possibly EOL) images, and keeps libzmq + the MEX built with one consistent
-  # in-container toolchain.
-  octave-linux:
-    name: linux · Octave ${{ matrix.octave }}
+  matlab-test-forward:
+    name: test · ${{ matrix.os }} · MATLAB ${{ matrix.release }}
+    needs: matlab-build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  release: latest, asset: zmq-matlab-linux }
+          - { os: windows-latest, release: latest, asset: zmq-matlab-windows }
+    steps:
+      - uses: actions/checkout@v7   # make.m, tests/, +zmq shims (no rebuild, no submodule)
+      - uses: matlab-actions/setup-matlab@v3
+        with:
+          release: ${{ matrix.release }}
+      - name: Fetch floor-built package
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.asset }}
+          path: lib                # overlays the floor-built MEX into lib/+zmq/
+      - name: Test floor binary (no rebuild)
+        uses: matlab-actions/run-command@v3
+        with:
+          command: ok = make('test'); assert(ok == 1, 'forward-compat tests failed');
+
+  # =============================================================== Octave =====
+  # Build on Octave 4.4 (the psychtoolbox-era floor), then forward-test that
+  # exact .mex on 7.3 / latest. Octave's mex ABI is not guaranteed across major
+  # versions, so these forward-tests determine whether one binary suffices.
+  octave-build:
+    name: build · linux · Octave 4.4.1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Build & test
+        run: |
+          docker run --rm -i -v "$PWD:/work" -w /work gnuoctave/octave:4.4.1 bash -s <<'EOF'
+          command -v cmake >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends cmake build-essential; }
+          octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
+          status=$?
+          # container runs as root; make the MEX readable by the runner user for upload
+          chmod -R a+rX /work/lib || true
+          exit $status
+          EOF
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: zmq-octave-linux
+          path: lib
+          if-no-files-found: error
+
+  octave-test-forward:
+    name: test · linux · Octave ${{ matrix.octave }}
+    needs: octave-build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        octave: ['4.4.1', '7.3.0', 'latest']
+        octave: ['7.3.0', 'latest']
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7   # make.m, tests/, +zmq shims (no rebuild, no submodule)
+      - name: Fetch 4.4-built package
+        uses: actions/download-artifact@v8
         with:
-          submodules: recursive
-
-      - name: Build & test (Octave ${{ matrix.octave }})
+          name: zmq-octave-linux
+          path: lib
+      - name: Test 4.4 binary on Octave ${{ matrix.octave }} (no rebuild)
         run: |
           docker run --rm -i -v "$PWD:/work" -w /work "gnuoctave/octave:${{ matrix.octave }}" bash -s <<'EOF'
-          command -v cmake >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends cmake build-essential; }
-          octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
-          status=$?
-          # the container runs as root, so the built MEX is root-owned. Make lib
-          # world-readable so the later upload-artifact step (which runs as the
-          # unprivileged runner user) can include the .mex, not just the .m shims.
-          chmod -R a+rX /work/lib || true
-          exit $status
+          octave-cli -q --eval "ok = make('test'); assert(ok == 1, 'forward-compat tests failed');"
           EOF
 
-      - name: Upload zmq package
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: zmq-octave-${{ matrix.octave }}-linux
-          path: lib   # whole +zmq package (.m shims + built .mex)
-          if-no-files-found: warn
-
-  # ----------------------------------------------------- Octave (Windows) -----
-  # MSYS2/MinGW so Octave, gcc and CMake share ONE toolchain (an MSVC-built
-  # libzmq cannot be linked by Octave's MinGW mkoctfile). MSYS2 is rolling, so
-  # this tracks the current Octave -- a Windows portability check rather than a
-  # pinned-version test.
+  # MSYS2 is rolling, so we can't pin an old Octave here: build + test + ship the
+  # current one. make.m disables ipc:// for MinGW (libzmq guards its Windows ipc
+  # headers on _MSC_VER); tcp:// and inproc:// still work.
   octave-windows:
-    name: windows · Octave (MSYS2)
+    name: build · windows · Octave (MSYS2)
     runs-on: windows-latest
-    # make.m disables ipc:// for this build (libzmq 4.3.5 guards its Windows ipc
-    # headers on _MSC_VER, which MinGW is not); tcp:// and inproc:// still work.
-    # NOTE: MSYS2 is a rolling toolchain, so a future gcc/Octave bump could break
-    # this cell and need another workaround.
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -138,18 +153,51 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-ninja
-
       - name: Build & test
         shell: msys2 {0}
         env:
           CMAKE_GENERATOR: Ninja   # MinGW: single-config; libzmq.a lands in build/lib
         run: |
           octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
-
-      - name: Upload zmq package
-        if: always()
+      - name: Upload package
         uses: actions/upload-artifact@v7
         with:
           name: zmq-octave-windows
-          path: lib   # whole +zmq package (.m shims + built .mex)
-          if-no-files-found: warn
+          path: lib
+          if-no-files-found: error
+
+  # ============================================================== Release =====
+  # On a v* tag, publish the floor-built packages (one per platform/engine) as a
+  # GitHub Release. Runs only after every build + forward-test passes, so a
+  # release implies the shipped binaries are confirmed forward-compatible.
+  release:
+    name: Publish release
+    needs: [matlab-build, matlab-test-forward, octave-build, octave-test-forward, octave-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: zmq-*       # the floor-built / shipped packages
+
+      - name: Zip each package
+        run: |
+          cd dist
+          for d in */; do
+            name="${d%/}"
+            (cd "$d" && zip -qr "../${name}.zip" .)
+          done
+          ls -la *.zip
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" dist/*.zip \
+            --repo "${{ github.repository }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
