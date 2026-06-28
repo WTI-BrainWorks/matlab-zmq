@@ -5,9 +5,11 @@ name: CI
 # binaries. Rationale:
 #   * MATLAB mex is forward-compatible (built on an older release runs on newer),
 #     so one floor build per OS covers all newer MATLAB.
-#   * Octave gives no cross-major-version mex ABI guarantee, so the forward-test
-#     jobs will reveal empirically whether the 4.4 binary loads on 7.3 / latest
-#     or whether per-version Octave builds are actually required.
+#   * Octave >= 6 builds a SONAME-free mex (the mex API symbols resolve from the
+#     running Octave at load, like MATLAB), so one 6.4 build is forward-compatible
+#     across 6.4 -> latest -- the same way Psychtoolbox ships 6.4-9.4 from a
+#     single binary. (Octave 4.4's old mkoctfile hard-linked liboctinterp, so its
+#     binary is version-locked; 4.4 is therefore below our floor.)
 #
 # libzmq is a git submodule (pinned); BUILD jobs check it out + compile it via
 # CMake, TEST jobs don't need it (the MEX statically links it, no rebuild).
@@ -85,11 +87,12 @@ jobs:
           command: ok = make('test'); assert(ok == 1, 'forward-compat tests failed');
 
   # =============================================================== Octave =====
-  # Build on Octave 4.4 (the psychtoolbox-era floor), then forward-test that
-  # exact .mex on 7.3 / latest. Octave's mex ABI is not guaranteed across major
-  # versions, so these forward-tests determine whether one binary suffices.
+  # Octave >= 6 produces a SONAME-free mex (symbols resolve from the running
+  # Octave at load), so a 6.4 build is forward-compatible across 6.4 -> latest
+  # (Psychtoolbox ships 6.4-9.4 the same way). Build on 6.4, forward-test the
+  # same binary on newer, ship one.
   octave-build:
-    name: build · linux · Octave 4.4.1
+    name: build · linux · Octave 6.4.0
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -97,7 +100,7 @@ jobs:
           submodules: recursive
       - name: Build & test
         run: |
-          docker run --rm -i -v "$PWD:/work" -w /work gnuoctave/octave:4.4.1 bash -s <<'EOF'
+          docker run --rm -i -v "$PWD:/work" -w /work gnuoctave/octave:6.4.0 bash -s <<'EOF'
           command -v cmake >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends cmake build-essential; }
           octave-cli -q --eval "ok = make; assert(ok == 1, 'build failed'); ok = make('test'); assert(ok == 1, 'tests failed');"
           status=$?
@@ -122,12 +125,12 @@ jobs:
         octave: ['7.3.0', 'latest']
     steps:
       - uses: actions/checkout@v7   # make.m, tests/, +zmq shims (no rebuild, no submodule)
-      - name: Fetch 4.4-built package
+      - name: Fetch 6.4-built package
         uses: actions/download-artifact@v8
         with:
           name: zmq-octave-linux
           path: lib
-      - name: Test 4.4 binary on Octave ${{ matrix.octave }} (no rebuild)
+      - name: Test 6.4 binary on Octave ${{ matrix.octave }} (no rebuild)
         run: |
           docker run --rm -i -v "$PWD:/work" -w /work "gnuoctave/octave:${{ matrix.octave }}" bash -s <<'EOF'
           octave-cli -q --eval "ok = make('test'); assert(ok == 1, 'forward-compat tests failed');"
